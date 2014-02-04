@@ -12,12 +12,13 @@ using PMTool.Filters;
 using PMTool.Models;
 using PMTool.Repository;
 using System.Net.Mail;
+using System.Configuration;
 
 namespace PMTool.Controllers
 {
     [Authorize]
     [InitializeSimpleMembership]
-    public class AccountController : Controller
+    public class AccountController :BaseController
     {
         //
         // GET: /Account/Login
@@ -83,17 +84,22 @@ namespace PMTool.Controllers
                 // Attempt to register the user
                 try
                 {
-                    string msg = WebSecurity.CreateUserAndAccount(model.UserName, model.Password);
-                    //WebSecurity.CreateUserAndAccount(model.UserName, model.Password,
-                    //    new
-                    //    {
-                    //        Email = model.Email
-                    //    },
-                    //    false
-                    //);
+                    string msg = WebSecurity.CreateAccount(model.UserName, model.UserName, model.Password, model.FirstName, model.LastName, false);
 
-                    if(msg == String.Empty)
-                        SendConfirmationEmail(model.UserName, model.Email);
+                    if (msg == String.Empty && !String.IsNullOrEmpty(ConfigurationManager.AppSettings["EnableEmailNotification"]))
+                    {
+                        if (Convert.ToBoolean(ConfigurationManager.AppSettings["EnableEmailNotification"])) //Check Enable Email Notification
+                        {
+                            try
+                            {
+                                SendConfirmationEmail(model.UserName); //Send confirmation email
+                            }
+                            catch (Exception exp)
+                            {
+                                //throw (exp);
+                            }
+                        }
+                    }
 
                     WebSecurity.Login(model.UserName, model.Password);
                     return RedirectToAction("Index", "Home");
@@ -106,6 +112,11 @@ namespace PMTool.Controllers
 
             // If we got this far, something failed, redisplay form
             return View(model);
+        }
+
+        public ActionResult verify(string Id)
+        {
+            return RedirectToAction("Index", "Home");
         }
 
         //
@@ -343,12 +354,6 @@ namespace PMTool.Controllers
             return PartialView("_RemoveExternalLoginsPartial", externalLogins);
         }
 
-        //[AllowAnonymous]
-        //[Authorize]
-        //public ActionResult InvitePeople()
-        //{
-        //    return View();
-        //}
 
         [Authorize]
         public ActionResult InvitePeople(string email)
@@ -356,10 +361,46 @@ namespace PMTool.Controllers
             //Just for test purpose
             if (!String.IsNullOrEmpty(email))
             {
-                SendInvitationEmail(email);
+                try
+                {
+                    if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["EnableEmailNotification"]))
+                    {
+                        if (Convert.ToBoolean(ConfigurationManager.AppSettings["EnableEmailNotification"])) //Check Enable Email Notification
+                        {
+                            SendInvitationEmail(email);
+                        }
+                    }
+                }
+                catch (Exception exp)
+                {
+                    throw (exp);
+                }
                 ViewBag.Message = "Invitation sent!";
             }
             return View(ViewBag);
+        }
+
+
+        [Authorize]
+        public ActionResult EditProfile()
+        {
+            UnitOfWork unitofWork = new UnitOfWork();
+            User user =unitofWork.UserRepository.GetUserByEmail(User.Identity.Name);
+            return View(user);
+        }
+
+
+        [Authorize]
+        [HttpPost]
+        public ActionResult EditProfile(User user) 
+        {
+            UnitOfWork unitofWork = new UnitOfWork();
+            //User userNew = unitofWork.UserRepository.GetUserByEmail(User.Identity.Name);
+            //userNew.FirstName = user.FirstName;
+            //userNew.LastName = user.LastName;
+            unitofWork.UserRepository.Update(user);
+            unitofWork.Save();
+            return View();
         }
 
         #region Helpers
@@ -440,24 +481,39 @@ namespace PMTool.Controllers
 
         #region Invitation & Verification
 
-        public void SendConfirmationEmail(string userName, string userEmail)
+        public void SendConfirmationEmail(string userName)
         {
-            MembershipUser user = Membership.GetUser(userName);
+            var message = new MailMessage();
+            var client = new SmtpClient();
+
+            MembershipUser user = Membership.GetUser(userName); //User Name = User Email
             string confirmationGuid = user.ProviderUserKey.ToString();
             string verifyUrl = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority) + "/account/verify?ID=" + confirmationGuid;
 
-            var message = new MailMessage("testbd2014@gmail.com", userEmail)
+            client.UseDefaultCredentials = false;
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["EmailFrom"]) && !String.IsNullOrEmpty(ConfigurationManager.AppSettings["EmailFromPass"]))
             {
-                Subject = "Hi " + userName + ", Please confirm your email",
-                Body = "Dear " + userName + ", Please confirm your email" + verifyUrl
+                message = new MailMessage(ConfigurationManager.AppSettings["EmailFrom"].ToString(), userName)
+                {
+                    Subject = "Hi " + userName + ", Please confirm your email",
+                    Body = "Dear " + userName + ", Please confirm your account by clicking the following URL. " + verifyUrl
 
-            };
+                };
 
-            var client = new SmtpClient();
-            client.Credentials = new System.Net.NetworkCredential("testbd2014@gmail.com", "testbd@123");
-            client.EnableSsl = true;
-            client.Host = "smtp.gmail.com";
-            client.Port = 587;
+                client.Credentials = new System.Net.NetworkCredential(ConfigurationManager.AppSettings["EmailFrom"].ToString(), ConfigurationManager.AppSettings["EmailFromPass"].ToString());
+            }
+
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["EnableSsl"]))
+                client.EnableSsl = Convert.ToBoolean(ConfigurationManager.AppSettings["EnableSsl"]);
+            else
+                client.EnableSsl = false;
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["SMTP"]))
+                client.Host = ConfigurationManager.AppSettings["SMTP"].ToString();
+
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["SMTPPort"]))
+                client.Port = Convert.ToInt32(ConfigurationManager.AppSettings["SMTPPort"]);
+            else
+                client.Port = 25; //Default port for SMTP
 
             //client.u
             client.Send(message);
@@ -467,28 +523,45 @@ namespace PMTool.Controllers
 
         public void SendInvitationEmail(string userEmail)
         {
-            //MembershipUser user = Membership.GetUser(userName);
-            string confirmationGuid = Guid.NewGuid().ToString(); 
-                //user.ProviderUserKey.ToString();
-            string verifyUrl = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority) + "/account/verify?ID=" + confirmationGuid;
-
-            var message = new MailMessage("testbd2014@gmail.com", userEmail)
-            {
-                Subject = "Invitation from PMTool",
-                Body = "You are invited to PMTool. Please click on the below link and signup. " + verifyUrl
-
-            };
-
+            
+            string confirmationGuid = Guid.NewGuid().ToString();
+            var message = new MailMessage();
             var client = new SmtpClient();
+        
+            //string verifyUrl = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority) + "/account/verify?ID=" + confirmationGuid;
+            string verifyUrl = System.Web.HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority) + "/Account/Register";
             client.UseDefaultCredentials = false;
+
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["EmailFrom"]) && !String.IsNullOrEmpty(ConfigurationManager.AppSettings["EmailFromPass"]))
+            {
+                message = new MailMessage(ConfigurationManager.AppSettings["EmailFrom"].ToString(), userEmail)
+                {
+                    Subject = "Invitation from PMTool",
+                    Body = "You are invited to PMTool. Please click on the below link and signup. " + verifyUrl
+
+                };
+
+                client.Credentials = new System.Net.NetworkCredential(ConfigurationManager.AppSettings["EmailFrom"].ToString(), ConfigurationManager.AppSettings["EmailFromPass"].ToString());
+            }
+
+
+            
             client.DeliveryMethod = SmtpDeliveryMethod.Network;
-            client.Credentials = new System.Net.NetworkCredential("testbd2014@gmail.com", "testbd@123");
-            client.EnableSsl = true;
-            client.Host = "smtp.gmail.com";
-            client.Port = 587;
+            //client.Credentials = new System.Net.NetworkCredential("testbd2014@gmail.com", "testbd@123");
 
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["EnableSsl"]))
+                client.EnableSsl = Convert.ToBoolean(ConfigurationManager.AppSettings["EnableSsl"]);
+            else
+                client.EnableSsl = false;
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["SMTP"]))
+                client.Host = ConfigurationManager.AppSettings["SMTP"].ToString();
 
-            //client.u
+            if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["SMTPPort"]))
+                client.Port = Convert.ToInt32(ConfigurationManager.AppSettings["SMTPPort"]);
+            else
+                client.Port = 25; //Default port for SMTP
+
+            //client.UseDefaultCredentials = false;
             client.Send(message);
         }
         #endregion

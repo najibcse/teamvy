@@ -30,7 +30,7 @@
     </td>
     <td>
 
-        @Html.TextBoxFor(model => model.StartDate,  new { @class = "datepicker" })
+        @Html.TextBoxFor(model => model.StartDate, "{0:dd/MM/yyyy}",  new { @class = "datepicker" })
         @Html.ValidationMessageFor(model => model.StartDate)
     </td>
 </tr>
@@ -40,14 +40,13 @@
         @Html.LabelFor(model => model.EndDate)
     </td>
     <td>
-        @Html.TextBoxFor(model => model.EndDate,  new { @class = "datepicker" })
+        @Html.TextBoxFor(model => model.EndDate, "{0:dd/MM/yyyy}",  new { @class = "datepicker" })
         @Html.ValidationMessageFor(model => model.EndDate)
     </td>
 </tr>
 
 <tr>
     <td>
-
         @Html.LabelFor(model => model.TaskHour)
     </td>
     <td>
@@ -55,45 +54,6 @@
         @Html.ValidationMessageFor(model => model.TaskHour)
     </td>
 </tr>
-
-
-<tr>
-    <td>
-        @Html.LabelFor(model => model.IsLocked)
-    </td>
-    <td>
-        @Html.EditorFor(model => model.IsLocked)
-        @Html.ValidationMessageFor(model => model.IsLocked)
-    </td>
-</tr>
-
-
-<tr>
-    <td>
-        @Html.LabelFor(model => model.IsActive)
-    </td>
-    <td>
-        @Html.EditorFor(model => model.IsActive)
-        @Html.ValidationMessageFor(model => model.IsActive)
-    </td>
-</tr>
-
-
-
-<tr>
-    <td>Project
-    </td>
-    <td>
-        @Html.DropDownListFor(model => model.ProjectID, ((IEnumerable<PMTool.Models.Project>)ViewBag.PossibleProjects).Select(option => new SelectListItem
-   {
-       Text = (option == null ? "None" : option.Name),
-       Value = option.ProjectID.ToString(),
-       Selected = (Model != null) && (option.ProjectID == Model.ProjectID)
-   }), "Choose...")
-        @Html.ValidationMessageFor(model => model.ProjectID)
-    </td>
-</tr>
-
 <tr>
     <td>Priority
     </td>
@@ -149,6 +109,20 @@
 
         jQuery('.chzn-select').trigger('chosen:updated');
     }
+
+    var SelectedLabelID = jQuery('Select#Labels').val();
+    var Labels = "";
+
+    if (SelectedLabelID != null) {
+        jQuery.each(SelectedLabelID, function (index, value) {
+            Labels = Labels + value + ",";
+        });
+
+        var LabelArray = new Array();
+        jQuery('Select#Labels').val(LabelArray);
+
+        jQuery('.chzn-select').trigger('chosen:updated');
+    }
 </script>
 
 <tr>
@@ -167,5 +141,31 @@
        
         @Html.ListBoxFor(m => m.SelectedFollowedUsers, (IEnumerable<SelectListItem>)ViewBag.PossibleUsers,
             new { @class = "chosen", multiple = "multiple", style = "width: 350px;" })
+    </td>
+</tr>
+
+<tr>
+    <td>Label 
+    </td>
+    <td>
+       
+        @Html.ListBoxFor(m => m.SelectedLabels, (IEnumerable<SelectListItem>)ViewBag.PossibleLabels,
+            new { @class = "chosen", multiple = "multiple", style = "width: 350px;" })
+    </td>
+</tr>
+
+
+<tr>
+    <td>Status
+    </td>
+    <td>
+        <select id="Status" name="Status">
+            <option value="">Choose...</option>
+            @foreach (SelectListItem item in (IEnumerable<SelectListItem>)ViewBag.PossibleTaskStatus)
+            {
+                <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+            }
+        </select>
+        @Html.ValidationMessageFor(model => model.Status)
     </td>
 </tr>

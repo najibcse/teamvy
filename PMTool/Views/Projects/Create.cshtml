@@ -1,31 +1,4 @@
 @model PMTool.Models.Project
-
-@*@{
-    ViewBag.Title = "Create";
-}
-
-<h2>Create</h2>
-
-@using (Html.BeginForm()) {
-    @Html.ValidationSummary(true)
-    <fieldset>
-        <legend>Project</legend>
-
-		@Html.Partial("_CreateOrEdit", Model)
-
-        <p>
-            <input type="submit" value="Create" />
-        </p>
-    </fieldset>
-}
-
-<div>
-    @Html.ActionLink("Back to List", "Index")
-</div>
-
-
-@model PMTool.Models.Label*@
-
 @{
     ViewBag.Title = "Create | Project";
 }
@@ -55,6 +28,3 @@
         </tbody>
     </table>
 }
-<div>
-    @Html.ActionLink("Back to List", "Index","Projects", null,  new { @class="btn"})
-</div>

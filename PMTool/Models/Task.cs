@@ -28,12 +28,15 @@ namespace PMTool.Models
         public string Description { get; set; }
 
         [Required]
+        [Display(Name = "Start Date")]
         public DateTime StartDate { get; set; }
 
         [Required]
+        [Display(Name = "End Date")]
         public DateTime EndDate { get; set; }
 
         [Required]
+        [Display(Name = "Task Hour")]
         public decimal TaskHour { get; set; }
 
         [Required]
@@ -41,17 +44,18 @@ namespace PMTool.Models
 
         public virtual Priority Priority { get; set; }
 
-        [Required]
-        [Display(Name = "Project Is Locked")]
-        public bool IsLocked { get; set; }
+        //[Required]
+        //[Display(Name = "Project Is Locked")]
+        //public bool IsLocked { get; set; }
 
         [Required]
-        [Display(Name = "Project Is Active")]
         public bool IsActive { get; set; }
 
-        public int? ParentTaskId { get; set; }
+        public long? ParentTaskId { get; set; }
 
         public virtual List<Task> ChildTask { get; set; }
+
+        public virtual Task ParentTask { get; set; }
 
         public string Attachments { get; set; }
 
@@ -87,8 +91,15 @@ namespace PMTool.Models
 
         public List<string> SelectedFollowedUsers { get; set; }
 
-        public string[] UserList { get; set; }
 
-        public string[] FollowerList { get; set; }
+        public List<string> SelectedLabels { get; set; }
+
+
+        [Required]
+        [Display(Name = "Status")]
+        public PMTool.Models.EnumCollection.TaskStatus Status { get; set; }
+
+
+
     }
 }

@@ -10,8 +10,9 @@ using PMTool.Models;
 using PMTool.Repository;
 
 namespace PMTool.Controllers
-{   
-    public class LabelsController : Controller
+{
+    [Authorize]
+    public class LabelsController : BaseController
     {
         private UnitOfWork uitofWork = new UnitOfWork();
 
